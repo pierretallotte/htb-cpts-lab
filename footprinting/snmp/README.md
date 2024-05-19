@@ -304,5 +304,89 @@ Reason: notWritable (That object does not support modification)
 Failed object: iso.3.6.1.2.1.25.1.7.0
 ```
 However, some data cannot be modified even for a `rwuser`.
+## SNMPv2c
+It is possible to configure the agent to allow SNMPv2c queries without using `rocommunity` or `rwcommunity` settings. The following lines let a user make a v2c query using the community string `public` to get the content of the view `systemonly`:
+```
+com2sec notConfigUser  default    public$
+group   notConfigGroup v2c        notConfigUser$
+view    systemonly     included   .1.3.6.1.2.1.1$
+view    systemonly     included   .1.3.6.1.2.1.25.1$
+access  notConfigGroup ""         any                noauth    prefix  systemonly none none
+```
+You can see the full configuration file in `snmpd_v2.conf`. To start the server, run the command:
+```
+docker build -t snmp_default_configuration $(pwd) && docker run -v $(pwd)/snmpd_v2.conf:/etc/snmp/snmpd.conf snmp_default_configuration
+```
+You can see using `nmap` that only v3 seems to be enabled:
+```
+$sudo nmap -p161 -sU -sC -sV 172.17.0.2
+[sudo] password for pierre: 
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2024-05-19 10:04 CEST
+Nmap scan report for 172.17.0.2
+Host is up (0.000076s latency).
+
+PORT    STATE SERVICE VERSION
+161/udp open  snmp    net-snmp; net-snmp SNMPv3 server
+| snmp-info: 
+|   enterprise: net-snmp
+|   engineIDFormat: unknown
+|   engineIDData: 0b53fc4c96b2496600000000
+|   snmpEngineBoots: 1
+|_  snmpEngineTime: 8s
+MAC Address: 02:42:AC:11:00:02 (Unknown)
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 10.73 seconds
+```
+However, you can make v2 queries using `snmpwalk`:
+```
+$snmpwalk -v2c -c public 172.17.0.2
+iso.3.6.1.2.1.1.1.0 = STRING: "Linux c92b30d035d9 6.5.0-13parrot1-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.5.13-1parrot1 (2023-12-19) x86_64"
+iso.3.6.1.2.1.1.2.0 = OID: iso.3.6.1.4.1.8072.3.2.10
+iso.3.6.1.2.1.1.3.0 = Timeticks: (5320) 0:00:53.20
+iso.3.6.1.2.1.1.4.0 = STRING: "Me <me@example.org>"
+iso.3.6.1.2.1.1.5.0 = STRING: "c92b30d035d9"
+iso.3.6.1.2.1.1.6.0 = STRING: "Sitting on the Dock of the Bay"
+iso.3.6.1.2.1.1.7.0 = INTEGER: 72
+iso.3.6.1.2.1.1.8.0 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.2.1 = OID: iso.3.6.1.6.3.10.3.1.1
+iso.3.6.1.2.1.1.9.1.2.2 = OID: iso.3.6.1.6.3.11.3.1.1
+iso.3.6.1.2.1.1.9.1.2.3 = OID: iso.3.6.1.6.3.15.2.1.1
+iso.3.6.1.2.1.1.9.1.2.4 = OID: iso.3.6.1.6.3.1
+iso.3.6.1.2.1.1.9.1.2.5 = OID: iso.3.6.1.6.3.16.2.2.1
+iso.3.6.1.2.1.1.9.1.2.6 = OID: iso.3.6.1.2.1.49
+iso.3.6.1.2.1.1.9.1.2.7 = OID: iso.3.6.1.2.1.50
+iso.3.6.1.2.1.1.9.1.2.8 = OID: iso.3.6.1.2.1.4
+iso.3.6.1.2.1.1.9.1.2.9 = OID: iso.3.6.1.6.3.13.3.1.3
+iso.3.6.1.2.1.1.9.1.2.10 = OID: iso.3.6.1.2.1.92
+iso.3.6.1.2.1.1.9.1.3.1 = STRING: "The SNMP Management Architecture MIB."
+iso.3.6.1.2.1.1.9.1.3.2 = STRING: "The MIB for Message Processing and Dispatching."
+iso.3.6.1.2.1.1.9.1.3.3 = STRING: "The management information definitions for the SNMP User-based Security Model."
+iso.3.6.1.2.1.1.9.1.3.4 = STRING: "The MIB module for SNMPv2 entities"
+iso.3.6.1.2.1.1.9.1.3.5 = STRING: "View-based Access Control Model for SNMP."
+iso.3.6.1.2.1.1.9.1.3.6 = STRING: "The MIB module for managing TCP implementations"
+iso.3.6.1.2.1.1.9.1.3.7 = STRING: "The MIB module for managing UDP implementations"
+iso.3.6.1.2.1.1.9.1.3.8 = STRING: "The MIB module for managing IP and ICMP implementations"
+iso.3.6.1.2.1.1.9.1.3.9 = STRING: "The MIB modules for managing SNMP Notification, plus filtering."
+iso.3.6.1.2.1.1.9.1.3.10 = STRING: "The MIB module for logging SNMP Notifications."
+iso.3.6.1.2.1.1.9.1.4.1 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.2 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.3 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.4 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.5 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.6 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.7 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.8 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.9 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.1.9.1.4.10 = Timeticks: (0) 0:00:00.00
+iso.3.6.1.2.1.25.1.1.0 = Timeticks: (433102) 1:12:11.02
+iso.3.6.1.2.1.25.1.2.0 = Hex-STRING: 07 E8 05 13 08 05 1F 00 2B 00 00 
+iso.3.6.1.2.1.25.1.3.0 = INTEGER: 393216
+iso.3.6.1.2.1.25.1.4.0 = STRING: "BOOT_IMAGE=/@/boot/vmlinuz-6.5.0-13parrot1-amd64 root=UUID=8aa862fe-5469-4da5-8079-e9f0732fade0 ro rootflags=subvol=@ quiet spla"
+iso.3.6.1.2.1.25.1.5.0 = Gauge32: 0
+iso.3.6.1.2.1.25.1.6.0 = Gauge32: 1
+iso.3.6.1.2.1.25.1.7.0 = INTEGER: 0
+iso.3.6.1.2.1.25.1.7.0 = No more variables left in this MIB View (It is past the end of the MIB tree)
+```
 ## References
 - [snmpd.conf man page](http://www.net-snmp.org/docs/man/snmpd.conf.html)
